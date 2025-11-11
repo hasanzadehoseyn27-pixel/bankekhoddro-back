@@ -11,3 +11,4 @@ public static class TextGuards
     public static bool ContainsContactOrLink(string? t)
         => !string.IsNullOrWhiteSpace(t) && (RxLink.IsMatch(t!) || RxUser.IsMatch(t!) || RxPhone.IsMatch(t!));
 }
+//dqwdwqd

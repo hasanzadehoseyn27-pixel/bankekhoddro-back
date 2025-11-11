@@ -1,15 +1,28 @@
-﻿# ---- Build stage
+﻿# ---- Build stage ----
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-COPY . .
-RUN dotnet publish -c Release -o /app /p:UseAppHost=false
 
-# ---- Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+# فقط csproj ها را کپی کن تا restore کش شود
+COPY *.csproj ./
+RUN dotnet restore
+
+# بقیه سورس
+COPY . ./
+RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
+
+# ---- Runtime stage ----
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
-COPY --from=build /app .
-# Render مقدار PORT را ست می‌کند؛ با این خط روی همان پورت گوش می‌دهیم
-ENV ASPNETCORE_URLS=http://0.0.0.0:${PORT}
-# (اختیاری) صرفاً سندی؛ Render نیاز ندارد ولی بد نیست
-EXPOSE 10000
-CMD ["sh", "-c", "dotnet BankeKhodroBot.dll"]
+
+# Kestrel روی 8080 گوش بده (داخل کانتینر)
+ENV ASPNETCORE_URLS=http://+:8080
+# زمان/فرهنگ اختیاری
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+
+COPY --from=build /app/publish ./
+
+# پورت سرویس داخل کانتینر
+EXPOSE 8080
+
+# اجرای اپ
+ENTRYPOINT ["dotnet", "BankeKhodroBot.dll"]

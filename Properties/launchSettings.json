@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "BankeKhodroBot": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:58215;http://localhost:58216"
+    }
+  }
+}
