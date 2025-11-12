@@ -14,17 +14,12 @@ builder.Configuration
 
 builder.Services.Configure<BotOptions>(builder.Configuration.GetSection("Bot"));
 
-// ===== CORS برای WebApp (GitHub Pages/Telegram) =====
-builder.Services.AddCors(opt => opt.AddPolicy("webapp",
-    p => p.WithOrigins(
-            "https://hasanzadehoseyn27-pixel.github.io",
-            "https://web.telegram.org",
-            "https://web.telegram.org/a",
-            "https://t.me")
-          .AllowAnyHeader()
-          .AllowAnyMethod()
-          .AllowCredentials()
-));
+// CORS برای GitHub Pages
+builder.Services.AddCors(o => o.AddPolicy("webapp", p =>
+    p.WithOrigins("https://hasanzadehoseyn27-pixel.github.io")
+     .AllowAnyHeader()
+     .AllowAnyMethod()
+     .WithExposedHeaders("*")));
 
 // ===== Telegram HTTP sender + Telegram.Bot client =====
 string GetToken(IServiceProvider sp)
@@ -72,12 +67,11 @@ builder.Logging.AddConsole();
 
 var app = builder.Build();
 
-// ===== CORS باید قبل از Endpointها فعال شود =====
 app.UseCors("webapp");
 
-// ===== Static WebApp (اگر چیزی داخل wwwroot داری) =====
-app.UseDefaultFiles();
-app.UseStaticFiles();
+// ===== Static WebApp (wwwroot/webapp/index.html) =====
+app.UseDefaultFiles();   // index.html را اتومات سرو می‌کند
+app.UseStaticFiles();    // wwwroot
 
 // health
 app.MapGet("/healthz", () => Results.Ok("ok"));

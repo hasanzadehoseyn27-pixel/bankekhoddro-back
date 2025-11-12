@@ -22,13 +22,11 @@ public static class AdsEndpoints
             IOptions<BotOptions> botOpts,
             CancellationToken ct) =>
         {
-            // multipart form expected
             if (!req.HasFormContentType)
                 return Results.BadRequest("multipart/form-data expected.");
 
             var form = await req.ReadFormAsync(ct);
 
-            // validate Telegram init data
             var initData = form["tgInitData"].ToString();
             if (string.IsNullOrWhiteSpace(initData))
                 return Results.BadRequest("Missing tgInitData.");
@@ -36,11 +34,10 @@ public static class AdsEndpoints
             if (!ValidateTelegramInitData(initData, botOpts.Value.Token, out var user))
                 return Results.Unauthorized();
 
-            // fields
             var ad = new CarAd
             {
                 UserId = user.Id,
-                SubmitterName = user.DisplayName, // نمایش نام کاربر به‌جای آی‌دی
+                SubmitterName = user.DisplayName,
                 RequestType = Enum.TryParse<RequestType>(form["requestType"], out var r) ? r : RequestType.Sell,
                 CarName = form["carName"],
                 Year = form["year"],
@@ -48,14 +45,14 @@ public static class AdsEndpoints
                 Mileage = form["mileage"],
                 BodyCondition = form["body"],
                 ChassisCondition = form["chassis"],
-                TireCondition = form["tires"],       // ✅ وضعیت لاستیک
+                TireCondition = form["tires"],
                 Mechanical = form["mechanical"],
                 Gearbox = form["gearbox"],
                 Price = form["price"],
                 Extra = form["extra"]
             };
 
-            // send album to admin (if any photo)
+            // آلبوم عکس‌ها
             var files = form.Files;
             var streams = new List<StreamPhoto>();
             foreach (var f in files)
@@ -70,7 +67,7 @@ public static class AdsEndpoints
             var adId = Guid.NewGuid().ToString("N");
             pending.PendingAds[adId] = ad;
 
-            var adminText = ad.ToPrettyForAdmin(); // استایل شکیل برای ادمین
+            var adminText = ad.ToPrettyForAdmin();
             var kb = new
             {
                 inline_keyboard = new[]
@@ -84,26 +81,28 @@ public static class AdsEndpoints
 
             try
             {
-                if (rt.AdminChatId == 0) return Results.BadRequest("AdminChatId not set.");
+                // fallback به BotOptions اگر RuntimeConfig خالی بود
+                long adminId = rt.AdminChatId != 0 ? rt.AdminChatId : botOpts.Value.AdminChatId;
+
+                if (adminId == 0)
+                    return Results.BadRequest("AdminChatId not set");
 
                 if (streams.Count > 0)
-                    await tg.SendAlbum(rt.AdminChatId, streams, ct: ct);
+                    await tg.SendAlbum(adminId, streams, ct: ct);
 
-                await tg.SendText(rt.AdminChatId, adminText, "HTML", kb, ct);
+                await tg.SendText(adminId, adminText, "HTML", kb, ct);
 
-                // notify user (optional)
-                await tg.SendText(ad.UserId, "درخواست شما برای ادمین ارسال شد و در انتظار تایید است.", ct: ct);
+                await tg.SendText(ad.UserId, "درخواست شما برای ادمین ارسال شد و در انتظار تایید است. ✅", ct: ct);
                 return Results.Ok(new { ok = true });
             }
             finally
             {
-                // dispose memory streams
                 foreach (var s in streams) s.Content.Dispose();
             }
         });
     }
 
-    // ===== Telegram WebApp initData validation =====
+    // === Validate WebApp initData ===
     private static bool ValidateTelegramInitData(string initData, string botToken, out (long Id, string DisplayName) user)
     {
         user = default;
@@ -119,7 +118,6 @@ public static class AdsEndpoints
                  .OrderBy(kv => kv.Key)
                  .Select(kv => $"{kv.Key}={kv.Value}"));
 
-        // secret_key = HMAC_SHA256("WebAppData", bot_token)
         var secret = HMACSHA256.HashData(Encoding.UTF8.GetBytes("WebAppData"),
                                          Encoding.UTF8.GetBytes(botToken));
         var hmac = HMACSHA256.HashData(secret, Encoding.UTF8.GetBytes(dataCheckString));
@@ -130,7 +128,6 @@ public static class AdsEndpoints
 
         if (!pairs.TryGetValue("user", out var userJson)) return false;
 
-        // ❌ مشکل قبلی: سازنده بدون پارامتر نداشت → با مقادیر پیش‌فرض مقداردهی کن
         var u = JsonSerializer.Deserialize<TgUser>(userJson) ?? new TgUser(0, null, null, null);
 
         var display = !string.IsNullOrWhiteSpace(u.username) ? $"@{u.username}" :

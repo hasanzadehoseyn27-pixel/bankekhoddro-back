@@ -3,19 +3,17 @@ using BankeKhodroBot.TelegramApi;
 using Microsoft.Extensions.Options;
 using Telegram.Bot.Types;
 
-// برای رفع ابهام WebAppInfo بین پکیج خودمان و Telegram.Bot.Types
-using TelegramWebAppInfo = BankeKhodroBot.TelegramApi.WebAppInfo;
-
 namespace BankeKhodroBot.Handlers;
 
 public class PrivateFormHandler
 {
     private readonly ITgSender _tg;
-    private readonly BotOptions _opts;
+    private readonly BotOptions _opt;
 
-    public PrivateFormHandler(ITgSender tg, IOptions<BotOptions> opts)
+    public PrivateFormHandler(ITgSender tg, IOptions<BotOptions> opt)
     {
-        _tg = tg; _opts = opts.Value;
+        _tg = tg;
+        _opt = opt.Value;
     }
 
     public async Task Handle(Message m, CancellationToken ct)
@@ -24,22 +22,19 @@ public class PrivateFormHandler
 
         if (string.Equals(text, "/post", StringComparison.OrdinalIgnoreCase))
         {
-            // دامنه‌ی Backend روی Render
-            const string apiBase = "https://bankekhoddro-back.onrender.com";
+            var web = (_opt.WebAppUrl ?? "").TrimEnd('/');
+            var api = (_opt.PublicApiBase ?? "").TrimEnd('/');
 
-            // آدرس WebApp (GitHub Pages)
-            var webappBase = (_opts.WebAppUrl ?? "").Trim().TrimEnd('/');
-
-            // فرم را با پارامتر ?api= باز کنیم تا فرانت بداند کجا POST بزند
-            var url = $"{webappBase}/?api={Uri.EscapeDataString(apiBase)}";
+            var url = string.IsNullOrWhiteSpace(api)
+                ? web
+                : $"{web}?api={Uri.EscapeDataString(api)}";
 
             var kb = new InlineKeyboardMarkupDto(new[]
             {
                 new [] {
                     new InlineKeyboardButtonDto(
                         "📝 باز کردن فرم آگهی",
-                        WebApp: new TelegramWebAppInfo(url)
-                    )
+                        WebApp: new BankeKhodroBot.TelegramApi.WebAppInfo(url))
                 }
             });
 
