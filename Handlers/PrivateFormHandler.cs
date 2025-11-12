@@ -3,6 +3,9 @@ using BankeKhodroBot.TelegramApi;
 using Microsoft.Extensions.Options;
 using Telegram.Bot.Types;
 
+// برای رفع ابهام WebAppInfo بین پکیج خودمان و Telegram.Bot.Types
+using TelegramWebAppInfo = BankeKhodroBot.TelegramApi.WebAppInfo;
+
 namespace BankeKhodroBot.Handlers;
 
 public class PrivateFormHandler
@@ -12,8 +15,7 @@ public class PrivateFormHandler
 
     public PrivateFormHandler(ITgSender tg, IOptions<BotOptions> opts)
     {
-        _tg = tg;
-        _opts = opts.Value;
+        _tg = tg; _opts = opts.Value;
     }
 
     public async Task Handle(Message m, CancellationToken ct)
@@ -22,34 +24,37 @@ public class PrivateFormHandler
 
         if (string.Equals(text, "/post", StringComparison.OrdinalIgnoreCase))
         {
+            // دامنه‌ی Backend روی Render
+            const string apiBase = "https://bankekhoddro-back.onrender.com";
+
+            // آدرس WebApp (GitHub Pages)
+            var webappBase = (_opts.WebAppUrl ?? "").Trim().TrimEnd('/');
+
+            // فرم را با پارامتر ?api= باز کنیم تا فرانت بداند کجا POST بزند
+            var url = $"{webappBase}/?api={Uri.EscapeDataString(apiBase)}";
+
             var kb = new InlineKeyboardMarkupDto(new[]
             {
-                new []
-                {
+                new [] {
                     new InlineKeyboardButtonDto(
                         "📝 باز کردن فرم آگهی",
-                        WebApp: new BankeKhodroBot.TelegramApi.WebAppInfo(_opts.WebAppUrl) // ← نوعِ درست برای WebAppInfo
+                        WebApp: new TelegramWebAppInfo(url)
                     )
                 }
             });
 
             await _tg.SendText(
-                chatId: m.Chat.Id,
-                text: "برای ثبت آگهی روی دکمه زیر بزن:",
+                m.Chat.Id,
+                "برای ثبت آگهی روی دکمه زیر بزن:",
                 parseMode: "HTML",
                 replyMarkup: kb,
-                ct: ct
-            );
+                ct: ct);
             return;
         }
 
         if (string.Equals(text, "/start", StringComparison.OrdinalIgnoreCase))
         {
-            await _tg.SendText(
-                chatId: m.Chat.Id,
-                text: "سلام! برای ثبت آگهی «/post» را بزن و فرم را پر کن.",
-                ct: ct
-            );
+            await _tg.SendText(m.Chat.Id, "سلام! برای ثبت آگهی «/post» را بزن و فرم را پر کن.", ct: ct);
         }
     }
 }

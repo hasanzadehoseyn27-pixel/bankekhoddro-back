@@ -14,6 +14,18 @@ builder.Configuration
 
 builder.Services.Configure<BotOptions>(builder.Configuration.GetSection("Bot"));
 
+// ===== CORS برای WebApp (GitHub Pages/Telegram) =====
+builder.Services.AddCors(opt => opt.AddPolicy("webapp",
+    p => p.WithOrigins(
+            "https://hasanzadehoseyn27-pixel.github.io",
+            "https://web.telegram.org",
+            "https://web.telegram.org/a",
+            "https://t.me")
+          .AllowAnyHeader()
+          .AllowAnyMethod()
+          .AllowCredentials()
+));
+
 // ===== Telegram HTTP sender + Telegram.Bot client =====
 string GetToken(IServiceProvider sp)
 {
@@ -38,7 +50,7 @@ builder.Services.AddHttpClient<ITgSender, TgHttp>((sp, http) =>
     http.BaseAddress = new Uri($"https://api.telegram.org/bot{token}/");
 });
 
-// ===== RuntimeConfig (اشکال شما دقیقا از این خط نبودن بود) =====
+// ===== RuntimeConfig =====
 builder.Services.AddSingleton<IRuntimeConfig, RuntimeConfig>();
 
 // ===== Stores =====
@@ -60,14 +72,17 @@ builder.Logging.AddConsole();
 
 var app = builder.Build();
 
-// ===== Static WebApp (wwwroot/webapp/index.html) =====
-app.UseDefaultFiles();   // index.html را اتومات سرو می‌کند
-app.UseStaticFiles();    // wwwroot
+// ===== CORS باید قبل از Endpointها فعال شود =====
+app.UseCors("webapp");
+
+// ===== Static WebApp (اگر چیزی داخل wwwroot داری) =====
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 // health
 app.MapGet("/healthz", () => Results.Ok("ok"));
 
-// APIهای WebApp (اگر AdsEndpoints.cs دارید)
+// APIهای WebApp
 AdsEndpoints.Map(app);
 
 app.Run();
