@@ -99,7 +99,7 @@
 
   // ====== آدرس API ======
   // اگر ?api= از ربات نیامد، همیشه روی Render بیفتد (نه GitHub Pages!)
-  const FALLBACK_API = "https://bankekhoddro-back.onrender.com";
+  const FALLBACK_API = "https://api.185.215.244.16.sslip.io";
 
   const qs = new URLSearchParams(location.search);
   const API_BASE = (qs.get("api") || FALLBACK_API).replace(/\/$/, "");
